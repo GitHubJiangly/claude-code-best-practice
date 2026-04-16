@@ -384,6 +384,7 @@ All major workflows converge on the same architectural pattern: **Research → P
   <a href="reports/claude-code-best-practice-overview.md"><img src="https://img.shields.io/badge/Best_Practice_Overview-555?style=for-the-badge" alt="Best Practice Overview"></a>
   <a href="reports/claude-hooks-system-analysis.md"><img src="https://img.shields.io/badge/Hooks_System_Analysis-555?style=for-the-badge" alt="Hooks System Analysis"></a>
   <a href="reports/claude-rules-system-analysis.md"><img src="https://img.shields.io/badge/Rules_System_Analysis-555?style=for-the-badge" alt="Rules System Analysis"></a>
+  <a href="reports/claude-commands-system-analysis.md"><img src="https://img.shields.io/badge/Commands_System_Analysis-555?style=for-the-badge" alt="Commands System Analysis"></a>
 </p>
 
 <p align="center">
