@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Language
+
+Always respond in Chinese (中文). All conversations, explanations, commit messages, and code comments should be in Chinese, unless the user explicitly requests another language.
+
 ## Repository Overview
 
 This is a best practices repository for Claude Code configuration, demonstrating patterns for skills, subagents, hooks, and commands. It serves as a reference implementation rather than an application codebase.
