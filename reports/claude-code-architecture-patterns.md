@@ -20,8 +20,9 @@
 7. [Checkpointing & Rollback — 检查点与回滚](#checkpointing-and-rollback)
 8. [Orchestration Patterns — 编排模式](#orchestration-patterns)
 9. [Agent Invocation Patterns — 代理调用模式](#agent-invocation-patterns)
-10. [核心设计原则总结](#核心设计原则总结)
-11. [Sources](#sources)
+10. [Agent Orchestration Patterns — 4 大代理编排模式](#agent-orchestration-patterns)
+11. [核心设计原则总结](#核心设计原则总结)
+12. [Sources](#sources)
 
 ---
 
@@ -998,9 +999,536 @@ Pattern 5: Agent + 预加载 Skill
 
 ---
 
+<a id="agent-orchestration-patterns"></a>
+
+## 10. Agent Orchestration Patterns — 4 大代理编排模式
+
+上一章（Chapter 9）聚焦于"如何触发一个 Agent"，本章聚焦于"多个 Agent 之间如何协作"。这 4 种编排模式描述了 Agent 之间的**数据流向和依赖关系**，是构建复杂工作流的架构蓝图。
+
+### 模式总览
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                    4 大代理编排模式                                │
+│                                                                  │
+│  1. Sequential       A ──→ B ──→ C     顺序链式，有数据依赖      │
+│  2. Multi-Agent      A ──→ B ──→ C     专业分工，有数据依赖      │
+│                      ↑         ↓                                 │
+│                      └─── D ───┘                                 │
+│  3. Parallel         A ─┬→ B           无数据依赖，独立并行      │
+│                         ├→ C                                     │
+│                         └→ D                                     │
+│  4. Conditional      if X → A          按条件分支选择 Agent      │
+│                      if Y → B                                    │
+│                      else → C                                    │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 10.1 Single Sequential Invocation — 单步顺序调用
+
+**定义**：编排者按固定顺序逐个调用 Agent，每一步的**输出作为下一步的输入**，形成线性数据流链。
+
+**架构图**：
+
+```
+编排者（Command）
+  │
+  ├─ Step 1: Agent A 执行
+  │    └─ 返回 Result_A
+  │
+  ├─ Step 2: Agent B 执行（接收 Result_A）
+  │    └─ 返回 Result_B
+  │
+  └─ Step 3: Agent C 执行（接收 Result_B）
+       └─ 返回 Result_C（最终结果）
+```
+
+**本仓库实例：`/weather-orchestrator`**
+
+```
+/weather-orchestrator
+  │
+  │  ┌─────────────────────────────────────────┐
+  │  │ Step 1: 用户交互（非 Agent）            │
+  │  │  AskUserQuestion → 用户选择 °C          │
+  │  │  输出: unit = "Celsius"                 │
+  │  └────────────────┬────────────────────────┘
+  │                   │ unit = "Celsius"
+  │                   ↓
+  │  ┌─────────────────────────────────────────┐
+  │  │ Step 2: weather-agent（隔离上下文）      │
+  │  │  输入: "Fetch temperature in Celsius"   │
+  │  │  预加载: weather-fetcher skill           │
+  │  │  执行: WebFetch Open-Meteo API           │
+  │  │  输出: temperature = 24, unit = "C"      │
+  │  └────────────────┬────────────────────────┘
+  │                   │ temperature = 24°C
+  │                   ↓
+  │  ┌─────────────────────────────────────────┐
+  │  │ Step 3: weather-svg-creator（Skill）     │
+  │  │  输入: 从上下文获取 24°C                 │
+  │  │  执行: 生成 SVG 卡片 + output.md         │
+  │  │  输出: weather.svg + output.md           │
+  │  └────────────────┬────────────────────────┘
+  │                   │
+  └─ 最终: 向用户展示结果
+```
+
+**数据流**：
+
+```
+用户偏好 (°C) ──→ weather-agent ──→ 温度数据 (24°C) ──→ weather-svg-creator ──→ SVG 文件
+```
+
+**关键特征**：
+
+| 特征 | 说明 |
+|------|------|
+| **数据依赖** | ✅ 有 — 每步依赖上一步的输出 |
+| **执行顺序** | 严格顺序，不可并行 |
+| **错误传播** | 任一步失败则整个链中断 |
+| **上下文传递** | Agent 结果返回 Command 上下文，作为下一步的输入 |
+
+**实现要点**：
+
+```markdown
+## 在 Command 中实现顺序调用
+
+### Step 2: Fetch Weather Data
+Use the Agent tool to invoke the weather agent:
+- subagent_type: weather-agent
+- prompt: Fetch the current temperature for Dubai in [unit]
+
+**Wait for the agent to complete** and capture the returned value.
+
+### Step 3: Create SVG Weather Card
+Use the Skill tool to invoke the weather-svg-creator skill.
+The skill will use the temperature value from Step 2
+**(available in the current context)** to create the SVG card.
+```
+
+**适用场景**：
+- 数据获取 → 数据处理 → 数据渲染的管道
+- 前置验证 → 核心操作 → 后置清理的流程
+- 任何"每步都需要上一步结果"的线性工作流
+
+---
+
+### 10.2 Multi-Agent Orchestration — 多代理编排
+
+**定义**：多个**专业化 Agent** 协作完成复杂任务，Agent 之间存在**数据依赖**和**任务分工**。与简单顺序调用不同，这里的 Agent 各有专长，编排者根据任务特性将子任务分配给最合适的 Agent。
+
+**架构图**：
+
+```
+编排者（Command）
+  │
+  ├─ Phase 1: Research Agent（Opus, 深度分析）
+  │    ├─ 读取本地文件
+  │    ├─ WebFetch 外部文档
+  │    └─ 返回: 结构化偏差报告
+  │              │
+  │              ↓ [依赖: 报告数据]
+  ├─ Phase 2: 编排者验证 + 读取历史 Changelog
+  │              │
+  │              ↓ [依赖: 验证后的数据]
+  ├─ Phase 3: 编排者合并结果，生成修复计划
+  │              │
+  │              ↓ [依赖: 修复计划]
+  └─ Phase 4: 用户审批后，编排者执行修复
+```
+
+**本仓库实例：`/workflows:best-practice:workflow-concepts`（完整版）**
+
+这个 Command 是本仓库中最复杂的多代理编排，展示了专业化分工 + 数据依赖的完整链条：
+
+```
+/workflow-concepts 10
+  │
+  │  ┌──────────────────────────────────────────────┐
+  │  │ Phase 0: 并行研究（2 个专业化 Agent）        │
+  │  │                                              │
+  │  │  Agent A: workflow-concepts-agent (Opus)      │
+  │  │  ├─ 专长: 本地文件对比 + 结构化偏差分析      │
+  │  │  ├─ 读取 README.md CONCEPTS 表格              │
+  │  │  ├─ WebFetch 官方文档 + Changelog              │
+  │  │  └─ 输出: {missing, changed, deprecated}       │
+  │  │                                              │
+  │  │  Agent B: claude-code-guide (Haiku)           │
+  │  │  ├─ 专长: 最新特性发现 + Web 搜索             │
+  │  │  ├─ WebSearch 最新 Claude Code 特性            │
+  │  │  └─ 输出: {features, versions, dates}          │
+  │  └──────────────────┬───────────────────────────┘
+  │                     │ 两份独立报告
+  │                     ↓
+  │  ┌──────────────────────────────────────────────┐
+  │  │ Phase 0.5: 读取验证清单（如存在）            │
+  │  │  编排者读取 verification-checklist.md         │
+  │  └──────────────────┬───────────────────────────┘
+  │                     │
+  │                     ↓
+  │  ┌──────────────────────────────────────────────┐
+  │  │ Phase 1: 读取历史 Changelog 对比              │
+  │  │  编排者读取之前的 changelog.md                 │
+  │  │  识别: RECURRING / NEW / RESOLVED              │
+  │  └──────────────────┬───────────────────────────┘
+  │                     │ 历史对比数据
+  │                     ↓
+  │  ┌──────────────────────────────────────────────┐
+  │  │ Phase 2: 交叉验证 + 合并                      │
+  │  │  编排者合并 Agent A + Agent B 的发现           │
+  │  │  ├─ 交叉验证: A 发现的 vs B 发现的             │
+  │  │  ├─ 标记矛盾: 让用户决定                       │
+  │  │  ├─ 执行验证清单规则                           │
+  │  │  └─ 生成 Priority Actions 表                   │
+  │  └──────────────────┬───────────────────────────┘
+  │                     │ 合并报告
+  │                     ↓
+  │  ┌──────────────────────────────────────────────┐
+  │  │ Phase 2.5-2.7: 自动化步骤（编排者执行）       │
+  │  │  ├─ 追加 Changelog 条目                        │
+  │  │  ├─ 更新 Last Updated badge                    │
+  │  │  └─ 验证所有 CONCEPTS URL                      │
+  │  └──────────────────┬───────────────────────────┘
+  │                     │ 最终报告
+  │                     ↓
+  │  ┌──────────────────────────────────────────────┐
+  │  │ Phase 3: 用户审批 + 执行修复                  │
+  │  │  ├─ 选项 1: 执行全部修复                       │
+  │  │  ├─ 选项 2: 选择性执行                         │
+  │  │  └─ 选项 3: 仅保存报告                         │
+  │  └──────────────────────────────────────────────┘
+```
+
+**专业化分工对比**：
+
+| 维度 | Agent A (workflow-concepts-agent) | Agent B (claude-code-guide) |
+|------|-----------------------------------|----------------------------|
+| **模型** | Opus（最强分析能力） | Haiku（最快搜索速度） |
+| **专长** | 本地文件精确对比 | Web 最新信息发现 |
+| **数据源** | README.md + 官方文档 URL | Web 搜索 + 文档索引 |
+| **输出** | 结构化偏差报告（精确） | 特性清单（广覆盖） |
+| **为什么选这个模型** | 需要深度分析本地 vs 远程差异 | 需要快速搜索最新信息 |
+
+**数据依赖图**：
+
+```
+Agent A ─────┐
+             ├──→ 编排者合并 ──→ 读取历史 ──→ 生成报告 ──→ 用户审批 ──→ 执行
+Agent B ─────┘              ↑
+                            │
+              verification-checklist.md
+              changelog.md
+```
+
+**与 Single Sequential 的区别**：
+
+| 维度 | Single Sequential | Multi-Agent Orchestration |
+|------|-------------------|--------------------------|
+| Agent 数量 | 通常 1-2 个 | 2+ 个专业化 Agent |
+| 数据流 | 线性链 A→B→C | 图状依赖（扇入/扇出） |
+| Agent 关系 | 接力（上一步的输出 = 下一步的输入） | 分工（不同专长处理不同子任务） |
+| 编排者角色 | 简单传递 | 交叉验证 + 合并 + 冲突解决 |
+| 复杂度 | 低 | 高 |
+
+**适用场景**：
+- 需要多个专家视角交叉验证的分析任务
+- 子任务需要不同模型/工具/权限的复杂工作流
+- 有历史对比和验证环节的持续性审计
+- 编排者需要在 Agent 结果之间做决策的场景
+
+---
+
+### 10.3 Parallel Agent Execution — 并行代理执行
+
+**定义**：多个**独立 Agent** 同时执行，Agent 之间**没有数据依赖**，各自在隔离上下文中并行工作。全部完成后由编排者收集结果。
+
+**架构图**：
+
+```
+编排者（Command）
+  │
+  ├─ 同一消息同时发出多个 Agent 调用（关键！）
+  │
+  │    ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+  │    │ Agent 1          │  │ Agent 2          │  │ Agent 3          │
+  │    │ 研究 Repo A      │  │ 研究 Repo B      │  │ 研究 Repo C      │
+  │    │ (独立上下文)     │  │ (独立上下文)     │  │ (独立上下文)     │
+  │    │                  │  │                  │  │                  │
+  │    │ 无数据依赖       │  │ 无数据依赖       │  │ 无数据依赖       │
+  │    └────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘
+  │             │                     │                     │
+  │             ↓                     ↓                     ↓
+  │          Result_1              Result_2              Result_3
+  │             │                     │                     │
+  │             └──────────┬──────────┘                     │
+  │                        └──────────┬─────────────────────┘
+  │                                   │
+  │                                   ↓
+  └─ 编排者收集全部结果 → 合并 → 输出
+```
+
+**本仓库实例：`/workflows:development-workflows`**
+
+这个 Command 将 10 个 GitHub 仓库的研究任务分配给多个相同类型的 Agent 并行执行：
+
+```
+/workflows:development-workflows
+  │
+  ├─ Phase 0: 读取当前 README 表格 + 历史 Changelog
+  │
+  ├─ Phase 1: 并行启动（同一消息，同一类型 Agent）
+  │
+  │    Agent 调用 1: development-workflows-research-agent
+  │    ├─ 任务: 研究 spec-kit + everything-claude-code + superpowers
+  │    └─ 独立执行（不依赖其他 Agent）
+  │
+  │    Agent 调用 2: development-workflows-research-agent （同时发出）
+  │    ├─ 任务: 研究 gstack + get-shit-done + BMAD-METHOD + OpenSpec
+  │    └─ 独立执行（不依赖其他 Agent）
+  │
+  │    Agent 调用 3: development-workflows-research-agent （同时发出）
+  │    ├─ 任务: 研究 oh-my-claudecode + compound-engineering + humanlayer
+  │    └─ 独立执行（不依赖其他 Agent）
+  │
+  │    [3 个 Agent 并行执行，互不干扰]
+  │    [每个 Agent 独立调用 GitHub API、WebFetch 仓库页面]
+  │
+  ├─ Phase 2: 等待全部完成
+  │
+  ├─ Phase 3: 编排者合并
+  │    ├─ 收集 3 份独立报告
+  │    ├─ 按 stars 排序
+  │    ├─ 对比历史 Changelog（识别变更）
+  │    └─ 生成统一更新表格
+  │
+  └─ Phase 4: 用户审批后更新 README
+```
+
+**为什么能并行**：
+
+```
+Agent 1 研究 spec-kit      ← 不需要 Agent 2 或 3 的任何数据
+Agent 2 研究 gstack        ← 不需要 Agent 1 或 3 的任何数据
+Agent 3 研究 oh-my-claudecode ← 不需要 Agent 1 或 2 的任何数据
+```
+
+每个 Agent 的输入是**独立的仓库 URL**，输出是**独立的结构化报告**，完全没有交叉依赖。
+
+**实现关键 — 同一消息并行**：
+
+```markdown
+# Command 中的指令（关键措辞）
+
+## Phase 1: Launch Research Agents
+
+**Immediately** spawn both agents in a **single message** (parallel).
+Each uses `subagent_type: "development-workflows-research-agent"`.
+```
+
+如果分成两条消息，Agent 会**顺序执行**（等第一个完成才启动第二个）。必须在同一消息中发出所有 Agent 调用。
+
+**与 Multi-Agent Orchestration 的区别**：
+
+| 维度 | Parallel Execution | Multi-Agent Orchestration |
+|------|-------------------|--------------------------|
+| 数据依赖 | ❌ 无（各自独立） | ✅ 有（结果需交叉验证） |
+| Agent 类型 | 通常相同（同一 Agent 多实例） | 通常不同（专业化分工） |
+| 合并逻辑 | 简单收集拼接 | 交叉验证 + 冲突解决 |
+| 核心价值 | 速度（N 个任务并行 = 时间/N） | 质量（多视角验证） |
+| 失败影响 | 一个失败不影响其他 | 可能导致交叉验证不完整 |
+
+**性能对比**：
+
+```
+顺序执行 10 个仓库研究:
+  10 × ~2 min = ~20 min
+
+并行 3 个 Agent（每个 3-4 个仓库）:
+  max(~7 min, ~7 min, ~7 min) = ~7 min
+
+加速比: ~3x
+```
+
+**适用场景**：
+- 大批量同质任务的分片并行（如多个仓库/文件/API 的独立研究）
+- 多语言/多平台的独立测试
+- 批量代码审查（多个 PR 独立审查）
+- 任何"N 个独立子任务，结果最后合并"的场景
+
+---
+
+### 10.4 Conditional Agent Invocation — 条件分支调用
+
+**定义**：编排者根据**运行时条件**（用户输入、文件内容、环境状态）动态选择不同的 Agent 执行。不同条件分支调用不同的专业化 Agent。
+
+**架构图**：
+
+```
+编排者（Command / Claude 主会话）
+  │
+  ├─ 评估条件
+  │    │
+  │    ├─ 条件 A 成立 → Agent A（专家 A）
+  │    │
+  │    ├─ 条件 B 成立 → Agent B（专家 B）
+  │    │
+  │    └─ 默认 → Agent C（通用处理）
+  │
+  └─ 仅一个 Agent 被调用
+```
+
+**本仓库实例 1：PROACTIVELY 语义条件分支**
+
+Claude 主会话根据用户输入的**语义内容**自动选择不同的 PROACTIVELY Agent：
+
+```
+用户输入: "迪拜现在多少度？"
+  │
+  ├─ Claude 评估所有 PROACTIVELY Agent 的 description
+  │
+  │  ┌─ weather-agent:
+  │  │  "PROACTIVELY...fetch weather data for Dubai, UAE"
+  │  │  → 匹配关键词: "迪拜" + "度" = 天气 ✅
+  │  │
+  │  ├─ presentation-curator:
+  │  │  "PROACTIVELY...update, modify, or fix the presentation"
+  │  │  → 匹配关键词: 无演示文稿相关 ❌
+  │  │
+  │  └─ time-agent:
+  │     "display the current time in PKT"
+  │     → 匹配关键词: 无时间相关 ❌
+  │
+  └─ 选择 weather-agent 执行
+
+用户输入: "帮我修改幻灯片第 5 页"
+  │
+  ├─ Claude 评估...
+  │  ├─ weather-agent → ❌
+  │  ├─ presentation-curator → "修改" + "幻灯片" ✅
+  │  └─ time-agent → ❌
+  │
+  └─ 选择 presentation-curator 执行
+
+用户输入: "现在几点了？"
+  │
+  ├─ Claude 评估...
+  │  ├─ weather-agent → ❌
+  │  ├─ presentation-curator → ❌
+  │  └─ time-agent → "几点" = 时间 ✅
+  │
+  └─ 选择 time-agent 执行
+```
+
+**本仓库实例 2：Rule + Glob 文件路径条件分支**
+
+根据 Claude 操作的**文件路径**自动选择不同的处理方式：
+
+```
+Claude 准备操作文件
+  │
+  ├─ 文件路径匹配 presentation/**
+  │    └─ Rule 注入 → 强制委派给 presentation-curator
+  │
+  ├─ 文件路径匹配 **/*.md
+  │    └─ Rule 注入 → 按文档标准规范操作（不委派 Agent）
+  │
+  └─ 其他文件
+       └─ 无条件 Rule → Claude 自主处理
+```
+
+**本仓库实例 3：Command 内的条件逻辑**
+
+编排 Command 可以根据中间结果动态决定后续调用：
+
+```
+/workflow-concepts
+  │
+  ├─ Phase 2: 合并 Agent 发现
+  │    │
+  │    ├─ 如果发现 Missing Concepts（HIGH priority）
+  │    │    └─ 生成 ready-to-paste 表格行
+  │    │
+  │    ├─ 如果发现 Broken URLs
+  │    │    └─ 标记为 HIGH priority action
+  │    │
+  │    └─ 如果无发现（zero drift）
+  │         └─ 仅记录到 Changelog，跳过修复步骤
+  │
+  └─ Phase 3: 根据发现决定
+       ├─ 有修复项 → 询问用户执行哪些
+       └─ 无修复项 → 直接完成
+```
+
+**条件类型总结**：
+
+| 条件类型 | 评估者 | 评估时机 | 本仓库实例 |
+|----------|--------|----------|-----------|
+| **语义条件** | Claude 自动匹配 | 用户输入时 | PROACTIVELY Agent 选择 |
+| **路径条件** | Glob 模式匹配 | 文件操作时 | Rule 强制委派 |
+| **数据条件** | Command 逻辑 | 中间结果返回后 | workflow-concepts Phase 3 |
+| **环境条件** | 配置/环境变量 | 会话启动时 | Agent Teams 启用条件 |
+
+**与其他模式的组合**：
+
+条件分支经常与其他模式嵌套使用：
+
+```
+条件分支（Pattern 4）
+  ├─ 条件 A → Single Sequential（Pattern 1）
+  │           A1 → A2 → A3
+  │
+  └─ 条件 B → Parallel Execution（Pattern 3）
+              ├─ B1
+              ├─ B2
+              └─ B3
+```
+
+**适用场景**：
+- 根据用户意图自动路由到合适的专家 Agent
+- 根据文件类型/路径选择不同的处理策略
+- 根据中间结果决定后续是否需要额外验证
+- 根据环境/配置动态选择工作流分支
+
+---
+
+### 4 种编排模式对比
+
+| 维度 | Sequential | Multi-Agent | Parallel | Conditional |
+|------|-----------|-------------|----------|-------------|
+| **数据依赖** | ✅ 线性链 | ✅ 图状 | ❌ 无 | 取决于分支 |
+| **Agent 关系** | 接力 | 分工协作 | 独立并行 | 互斥选择 |
+| **核心价值** | 数据管道 | 多视角质量 | 并行加速 | 智能路由 |
+| **编排复杂度** | 低 | 高 | 中 | 中 |
+| **失败影响** | 链断裂 | 交叉验证不完整 | 局部失败 | 走错分支 |
+| **典型 Agent 数** | 2-3 | 2-5 | 2-10+ | 1（按条件选） |
+| **本仓库典型** | weather-orchestrator | workflow-concepts | development-workflows | PROACTIVELY + Rules |
+
+### 选择决策指南
+
+```
+任务是否可以拆分为多个独立子任务？
+  │
+  ├─ 是，且子任务之间无数据依赖
+  │    └─ Pattern 3: Parallel Execution
+  │
+  ├─ 是，但子任务之间有数据依赖
+  │    ├─ 依赖是线性的（A→B→C）
+  │    │    └─ Pattern 1: Sequential
+  │    └─ 依赖是图状的（需交叉验证）
+  │         └─ Pattern 2: Multi-Agent Orchestration
+  │
+  └─ 否，但需要根据条件选择不同处理方式
+       └─ Pattern 4: Conditional Invocation
+```
+
+---
+
 <a id="核心设计原则总结"></a>
 
-## 10. 核心设计原则总结
+## 11. 核心设计原则总结
 
 | 原则 | 体现 |
 |------|------|
@@ -1019,7 +1547,7 @@ Pattern 5: Agent + 预加载 Skill
 
 <a id="sources"></a>
 
-## Sources
+## 12. Sources
 
 - [Claude Code 官方文档](https://code.claude.com/docs)
 - [Claude Code Best Practices](https://code.claude.com/docs/en/best-practices)
