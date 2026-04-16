@@ -89,7 +89,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "PreToolUse"
@@ -102,7 +102,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "PermissionRequest"
@@ -115,7 +115,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "PostToolUse"
@@ -128,7 +128,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "PostToolUseFailure"
@@ -141,7 +141,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "UserPromptSubmit"
@@ -154,7 +154,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "Notification"
@@ -167,7 +167,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "Stop"
@@ -180,7 +180,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "SubagentStart"
@@ -193,7 +193,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "SubagentStop"
@@ -206,7 +206,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "once": true,
@@ -220,7 +220,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "PostCompact"
@@ -233,7 +233,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "once": true,
@@ -247,7 +247,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "once": true,
@@ -261,7 +261,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 30000,
             "async": true,
             "statusMessage": "Setup"
@@ -274,7 +274,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "TeammateIdle"
@@ -287,7 +287,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "TaskCreated"
@@ -300,7 +300,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "TaskCompleted"
@@ -313,7 +313,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "ConfigChange"
@@ -326,7 +326,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "WorktreeCreate"
@@ -339,7 +339,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "WorktreeRemove"
@@ -352,7 +352,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "InstructionsLoaded"
@@ -365,7 +365,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "Elicitation"
@@ -378,7 +378,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "ElicitationResult"
@@ -391,7 +391,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "StopFailure"
@@ -404,7 +404,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "CwdChanged"
@@ -418,7 +418,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "FileChanged"
@@ -431,7 +431,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
+            "command": "python ${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/hooks.py",
             "timeout": 5000,
             "async": true,
             "statusMessage": "PermissionDenied"
