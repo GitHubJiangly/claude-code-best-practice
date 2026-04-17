@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Always respond in Chinese (中文). All conversations, explanations, commit messages, and code comments should be in Chinese, unless the user explicitly requests another language.
 
+Exception: Files inside `.claude/` (agents, commands, skills, rules, settings, hooks) and other Claude Code runtime files must be written in English — these are parsed by the Claude Code harness and English ensures reliable execution. Technical documentation outside `.claude/` (e.g., `best-practice/`, `reports/`, `tips/`) may be in Chinese.
+
 ## Repository Overview
 
 This is a best practices repository for Claude Code configuration, demonstrating patterns for skills, subagents, hooks, and commands. It serves as a reference implementation rather than an application codebase.
